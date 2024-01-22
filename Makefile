@@ -21,68 +21,25 @@ COMPRESSED_ISA = C
 # Add things like "export http_proxy=... https_proxy=..." here
 GIT_ENV = true
 
-test: testbench.vvp firmware/firmware.hex
-	$(VVP) -N $<
+#VCS Simulator options
+VCS = vcs
+VCS_FLAGS = -full64 -debug_all +v2k
 
-test_vcd: testbench.vvp firmware/firmware.hex
-	$(VVP) -N $< +vcd +trace +noerror
+simv: testbench.v picorv32.v
+	 $(VCS) $(VCS_FLAGS) $(RISCV_FORMAL_DEFINE) -o $@ $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) $^
+.PHONY: simv
 
-test_rvf: testbench_rvf.vvp firmware/firmware.hex
-	$(VVP) -N $< +vcd +trace +noerror
+test: simv firmware/firmware.hex
+	./simv 
+ 
+test_vcd: simv firmware/firmware.hex
+	./simv +vcd 
 
-test_wb: testbench_wb.vvp firmware/firmware.hex
-	$(VVP) -N $<
+test_rvf: simv firmware/firmware.hex
+	./simv +vcd +trace +noerror
 
-test_wb_vcd: testbench_wb.vvp firmware/firmware.hex
-	$(VVP) -N $< +vcd +trace +noerror
-
-test_ez: testbench_ez.vvp
-	$(VVP) -N $<
-
-test_ez_vcd: testbench_ez.vvp
-	$(VVP) -N $< +vcd
-
-test_sp: testbench_sp.vvp firmware/firmware.hex
-	$(VVP) -N $<
-
-test_axi: testbench.vvp firmware/firmware.hex
-	$(VVP) -N $< +axi_test
-
-test_synth: testbench_synth.vvp firmware/firmware.hex
-	$(VVP) -N $<
-
-test_verilator: testbench_verilator firmware/firmware.hex
-	./testbench_verilator
-
-testbench.vvp: testbench.v picorv32.v
-	$(IVERILOG) -o $@ $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) $^
-	chmod -x $@
-
-testbench_rvf.vvp: testbench.v picorv32.v rvfimon.v
-	$(IVERILOG) -o $@ -D RISCV_FORMAL $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) $^
-	chmod -x $@
-
-testbench_wb.vvp: testbench_wb.v picorv32.v
-	$(IVERILOG) -o $@ $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) $^
-	chmod -x $@
-
-testbench_ez.vvp: testbench_ez.v picorv32.v
-	$(IVERILOG) -o $@ $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) $^
-	chmod -x $@
-
-testbench_sp.vvp: testbench.v picorv32.v
-	$(IVERILOG) -o $@ $(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) -DSP_TEST $^
-	chmod -x $@
-
-testbench_synth.vvp: testbench.v synth.v
-	$(IVERILOG) -o $@ -DSYNTH_TEST $^
-	chmod -x $@
-
-testbench_verilator: testbench.v picorv32.v testbench.cc
-	$(VERILATOR) --cc --exe -Wno-lint -trace --top-module picorv32_wrapper testbench.v picorv32.v testbench.cc \
-			$(subst C,-DCOMPRESSED_ISA,$(COMPRESSED_ISA)) --Mdir testbench_verilator_dir
-	$(MAKE) -C testbench_verilator_dir -f Vpicorv32_wrapper.mk
-	cp testbench_verilator_dir/Vpicorv32_wrapper testbench_verilator
+test_axi: simv firmware/firmware.hex
+	./simv +axi_test
 
 check: check-yices
 
@@ -173,12 +130,6 @@ toc:
 	gawk '/^-+$$/ { y=tolower(x); gsub("[^a-z0-9]+", "-", y); gsub("-$$", "", y); printf("- [%s](#%s)\n", x, y); } { x=$$0; }' README.md
 
 clean:
-	rm -rf riscv-gnu-toolchain-riscv32i riscv-gnu-toolchain-riscv32ic \
-		riscv-gnu-toolchain-riscv32im riscv-gnu-toolchain-riscv32imc
-	rm -vrf $(FIRMWARE_OBJS) $(TEST_OBJS) check.smt2 check.vcd synth.v synth.log \
-		firmware/firmware.elf firmware/firmware.bin firmware/firmware.hex firmware/firmware.map \
-		testbench.vvp testbench_sp.vvp testbench_synth.vvp testbench_ez.vvp \
-		testbench_rvf.vvp testbench_wb.vvp testbench.vcd testbench.trace \
-		testbench_verilator testbench_verilator_dir
-
-.PHONY: test test_vcd test_sp test_axi test_wb test_wb_vcd test_ez test_ez_vcd test_synth download-tools build-tools toc clean
+	rm -rf simv simv.daidir csrc *.vpd *.vcd ucli.key
+ 
+.PHONY: clean
