@@ -1,0 +1,19 @@
+This file helps to simulate picorv32 testbeanch in VCS.
+
+PicoRV32 is a CPU core that implements the RISC-V RV32IMC Instruction Set. It can be configured as RV32E, RV32I, RV32IC, RV32IM, or RV32IMC core, and optionally contains a built-in interrupt controller.
+
+Prerequisites:
+
+Toolchain
+
+In PICO core `testbench.v` is a testbench that require an external firmware.hex file. where the RISC-V compiler toolchain is required to simulate this testbench.
+
+Toolchain can be install by using below commands
+
+1. make download-tools
+2. make build-tools
+
+Command to simulate PICO core
+
+1.  make test
+2. ./simv +vcd +verbose +trace  ##command to view simulation transcripter log
